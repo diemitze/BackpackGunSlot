@@ -7,7 +7,7 @@ using UnityEngine.EventSystems;
 
 namespace BackpackGunSlot
 {
-    // Hovering the empty slot lists every weapon class it takes. The ghost only shows the biggest.
+    // The ghost only shows the biggest class, so the tooltip lists them all.
     internal sealed class BackpackSlotTooltip : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     {
         private static readonly (string Id, string Name)[] Classes =
@@ -43,7 +43,6 @@ namespace BackpackGunSlot
 
         public void OnPointerEnter(PointerEventData eventData)
         {
-            // A filled slot shows the item's own tooltip instead.
             if (_text == null || _slot?.ContainedItem != null) return;
             var tooltip = ItemUiContext.Instance?.Tooltip;
             if (tooltip == null) return;

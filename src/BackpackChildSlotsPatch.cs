@@ -24,8 +24,7 @@ namespace BackpackGunSlot
                 __instance._specSlotHeader.gameObject.SetActive(true);
             if (__0 is not CompoundItem pack || !pack.Slots.Any(BackpackWeaponSlot.Matches))
                 return true;
-            // The equipped backpack binding draws this slot with the ON BACK prefab.
-            // Do not also create vanilla's small SPEC slot for the same address.
+            // The equipped pack draws this slot with the ON BACK prefab, so skip vanilla's SPEC slot.
             if (pack.Slots.All(BackpackWeaponSlot.Matches))
             {
                 if (__instance._specSlotsPanel != null)
@@ -58,8 +57,7 @@ namespace BackpackGunSlot
         typeof(FilterPanel), typeof(ItemUiContext), typeof(bool))]
     internal static class LayoutPresetSlotsPatch
     {
-        // The Terraframe layout ships a preset slot view that points at nothing. Vanilla packs
-        // have no slots so it never gets used, but ours would be paired with it and throw.
+        // Terraframe ships a preset slot view bound to nothing, ours would pair with it and throw.
         [HarmonyPrefix]
         private static void Prefix(ref SlotView[] __3)
         {
@@ -78,15 +76,13 @@ namespace BackpackGunSlot
         private static bool Prefix(ItemSpecificationPanel __instance, CompoundItem __0)
         {
             if (!IsGunPack(__0)) return true;
-            // The empty slot has no icon for the custom slot name and renders as a solid
-            // white tile, so only show the panel when there is a gun to list.
+            // The empty custom slot renders as a white tile, so only show the panel with a gun in it.
             bool hasGun = __0.Slots.Any(s => s.ContainedItem != null);
             __instance._modsPanel.gameObject.SetActive(hasGun);
             return hasGun;
         }
 
-        // Vanilla lists AllSlots, which recurses into the mounted gun and shows its every part.
-        // For our packs list only the pack's own slot, so the panel shows just the gun.
+        // AllSlots recurses into the mounted gun's parts, list only the pack's own slot.
         [HarmonyTranspiler]
         private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {

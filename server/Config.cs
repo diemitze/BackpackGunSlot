@@ -10,13 +10,11 @@ public record ConfigModel
     [JsonPropertyName("slotName")]
     public string SlotName { get; set; } = "mod_backpack_weapon";
 
-    // Every backpack slot takes every weapon class, ignoring tiers. A "none" override still skips a pack.
+    // Ignore tiers, every slot takes every class. "none" overrides still skip.
     [JsonPropertyName("allowAnyGun")]
     public bool AllowAnyGun { get; set; }
 
-    // Backpacks are sorted into the first tier whose maxCells >= the pack's total grid cells.
-    // Categories are weapon-class names from the map in Tuner (Pistol, SMG, Shotgun, AssaultRifle,
-    // AssaultCarbine, MarksmanRifle, SniperRifle, MachineGun, GrenadeLauncher, SpecialWeapon, Revolver, RocketLauncher).
+    // First tier with maxCells >= the pack's grid cells wins. Category names are the keys in Tuner.Categories.
     [JsonPropertyName("tiers")]
     public List<TierModel> Tiers { get; set; } = new()
     {
@@ -27,7 +25,7 @@ public record ConfigModel
         new() { MaxCells = 9999, Categories = new() { "Pistol", "SMG", "Shotgun", "AssaultRifle", "AssaultCarbine", "MarksmanRifle", "SniperRifle", "MachineGun", "GrenadeLauncher" } },
     };
 
-    // Optional: force specific backpack tpls into a named tier regardless of size, or "none" to skip.
+    // Pin tpls to a tier, or "none" to skip them.
     [JsonPropertyName("overrides")]
     public Dictionary<string, string> Overrides { get; set; } = new();
 }

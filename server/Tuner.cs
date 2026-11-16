@@ -24,9 +24,7 @@ public class Tuner(
     private const string BackpackBaseClass = "5448e53e4bdc2d60728b4567";
     private const string GrenadeLauncherNode = "5447bedf4bdc2d87278b4568";
 
-    // Weapon-class base nodes. A slot filter listing one of these accepts every gun of that class.
-    // The Revolver node mixes revolvers, the MTs-255 and the M32A1, so those are listed by tpl
-    // under the class they play as.
+    // The Revolver node mixes revolvers, the MTs-255 and the M32A1, so those are listed by tpl.
     private static readonly Dictionary<string, string[]> Categories = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Pistol"] =
@@ -94,14 +92,14 @@ public class Tuner(
             var slots = props.Slots?.ToList() ?? new List<Slot>();
             if (slots.Any(s => s.Name == _config.SlotName))
             {
-                continue; // idempotent
+                continue;
             }
 
             var categories = ResolveCategories(tpl, CountCells(props), tiers, out var tierLabel);
             if (categories.Count == 0)
             {
                 skipped++;
-                continue; // "none" override or empty tier: no slot for this pack
+                continue;
             }
 
             slots.Add(BuildWeaponSlot(tpl, categories, flares));
@@ -117,7 +115,7 @@ public class Tuner(
         return Task.CompletedTask;
     }
 
-    // The pack now has a slot, so bot gen wants a mod pool for it and warns per bot otherwise. Empty pool = bots spawn it with no gun.
+    // Bot gen warns per bot without a mod pool for the slot. Empty pool means no gun.
     private void RegisterEmptyBotModPools(List<MongoId> backpackTpls)
     {
         foreach (var botType in bots.Types.Values)
@@ -147,7 +145,6 @@ public class Tuner(
         return total;
     }
 
-    // Returns the resolved category-name -> tpl/node ids map for this backpack, plus a label for logging.
     private Dictionary<string, string[]> ResolveCategories(MongoId tpl, int cells, List<TierModel> tiers, out string tierLabel)
     {
         if (_config.Overrides?.TryGetValue(tpl.ToString(), out var forced) == true)
@@ -159,7 +156,6 @@ public class Tuner(
                 return new();
             }
 
-            // An override value is a comma-separated category list.
             return MapCategories(forced.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
         }
 
@@ -193,7 +189,7 @@ public class Tuner(
         return result;
     }
 
-    // RSP-30/ROP-30 cartridges sit under the GrenadeLauncher node but are single-use flares with no chamber.
+    // RSP-30/ROP-30 flares sit under the GrenadeLauncher node.
     private HashSet<MongoId> FindFlareCartridges()
     {
         return templates.Items
@@ -210,7 +206,7 @@ public class Tuner(
         };
         if (categories.ContainsKey("GrenadeLauncher") && flares.Count > 0)
         {
-            // The server model has no ExcludedFilter, but the client reads it from the same JSON key vanilla grids use.
+            // The server model lacks ExcludedFilter, but the client reads the same JSON key.
             filter.ExtensionData = new Dictionary<string, object>
             {
                 ["ExcludedFilter"] = flares.Select(f => f.ToString()).ToList()
@@ -220,7 +216,6 @@ public class Tuner(
         return new Slot
         {
             Name = _config.SlotName,
-            // Parameterless MongoId mints a fresh, unique, valid ObjectId (timestamp + random + counter).
             Id = new MongoId(),
             Parent = backpackTpl,
             Required = false,

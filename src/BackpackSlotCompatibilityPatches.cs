@@ -15,8 +15,7 @@ namespace BackpackGunSlot
         typeof(Slot), typeof(InventoryController), typeof(IEftSession), typeof(SkillManager), typeof(Vector3))]
     internal static class BackpackEquipWindowPatch
     {
-        // The enum controls window layout and dog-tag handling only. Keep the real
-        // Slot and ItemAddress, so selection still uses the backpack's own filters.
+        // The enum only drives window layout and dog tags. The real Slot keeps the pack's filters.
         internal static bool TryParseSlot(string id, out EquipmentSlot equipmentSlot)
         {
             if (string.Equals(id, Plugin.SlotName.Value?.Trim(), StringComparison.Ordinal))
@@ -65,8 +64,7 @@ namespace BackpackGunSlot
             var containers = collection.Containers.ToArray();
             if (!containers.Any(c => c is Slot slot && BackpackWeaponSlot.Matches(slot)))
                 return collection;
-            // Substitute only this method's argument. Do not patch async MoveNext:
-            // detouring the struct state machine on Mono breaks task completion.
+            // Not async MoveNext: detouring the struct state machine on Mono breaks task completion.
             return new AttachmentCollection(collection, containers
                 .Where(c => c is not Slot slot || !BackpackWeaponSlot.Matches(slot)).ToArray());
         }

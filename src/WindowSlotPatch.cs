@@ -9,8 +9,7 @@ using UnityEngine.UI;
 
 namespace BackpackGunSlot
 {
-    // A pack opened in its own window (nested in another pack, in the stash, on the ground)
-    // only shows grids. Add the gun slot there too so it stays reachable.
+    // Packs opened in their own window only show grids, so add the slot there too.
     [HarmonyPatch(typeof(GridWindow), nameof(GridWindow.Show))]
     internal static class GridWindowSlotPatch
     {
@@ -29,7 +28,6 @@ namespace BackpackGunSlot
             if (!Plugin.ModEnabled.Value || pack?.Slots == null) return;
             var slot = pack.Slots.FirstOrDefault(BackpackWeaponSlot.Matches);
             if (slot == null) return;
-            // The equipped pack already has the big ON PACK slot beside it.
             if (pack.CurrentAddress?.Container is Slot { ParentItem: InventoryEquipment }) return;
             var template = FindTemplate();
             if (template == null || window._containedGrids == null) return;
@@ -48,7 +46,6 @@ namespace BackpackGunSlot
             bool stacked = window.GetComponent<VerticalLayoutGroup>() != null;
             if (!stacked)
             {
-                // No layout group to stack into: pin it under the grids by hand.
                 var layout = view.GetComponent<LayoutElement>() ?? view.gameObject.AddComponent<LayoutElement>();
                 layout.ignoreLayout = true;
             }
@@ -67,7 +64,6 @@ namespace BackpackGunSlot
                 Plugin.Log.LogDebug($"Window slot on {pack.TemplateId}, stacked={stacked}");
         }
 
-        // Vanilla's small SPEC slot prefab, the one the equipped pack would otherwise use.
         private static SlotView FindTemplate()
         {
             if (_template != null) return _template;
@@ -78,7 +74,6 @@ namespace BackpackGunSlot
         }
     }
 
-    // Follows the grids: hidden until the pack is searched or while its contents are hidden.
     internal sealed class WindowSlotSync : MonoBehaviour
     {
         private SlotView _view;

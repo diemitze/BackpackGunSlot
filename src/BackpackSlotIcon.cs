@@ -22,7 +22,7 @@ namespace BackpackGunSlot
         };
         private const string Mts255 = "60db29ce99594040e04c4a27";
 
-        // The largest gun the slot takes. Long guns or a custom filter count as rifles.
+        // Long guns or a custom filter count as rifles.
         internal static GunClass Of(Slot slot)
         {
             var excluded = new HashSet<string>(slot.Filters.Where(f => f.ExcludedFilter != null)
@@ -36,7 +36,6 @@ namespace BackpackGunSlot
                 : allowed.Contains(Smgs) ? GunClass.Smg : GunClass.Pistol;
         }
 
-        // Null keeps the vanilla rifle ghost.
         internal static Sprite For(GunClass gun) => gun switch
         {
             GunClass.Pistol => SlotIcons.Pistol,

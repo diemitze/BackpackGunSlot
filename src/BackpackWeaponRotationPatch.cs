@@ -6,8 +6,7 @@ using UnityEngine;
 
 namespace BackpackGunSlot
 {
-    // Use the game's icon rotation rather than rotating the inventory container.
-    // This runs for existing items, new drops and failed-move recreation alike.
+    // Uses the game's icon rotation so new drops and recreated items get it too.
     [HarmonyPatch(typeof(SlotView), nameof(SlotView.SetupItemView))]
     internal static class BackpackWeaponItemRotationPatch
     {
@@ -31,9 +30,7 @@ namespace BackpackGunSlot
         private static void Prefix(SlotView __instance, ref Vector2 __0)
         {
             if (__instance.GetComponent<BackpackSlotMarker>()?.Vertical != true) return;
-            // ItemView.UpdateScale fits the unrotated image dimensions. Transpose
-            // the available bounds for a vertical icon, including the game's
-            // deferred end-of-frame scaling pass.
+            // UpdateScale fits the unrotated image, so transpose the bounds for a vertical icon.
             __0 = new Vector2(__0.y, __0.x);
         }
     }

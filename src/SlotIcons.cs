@@ -9,10 +9,9 @@ namespace BackpackGunSlot
         private static Sprite _smg;
         private static Sprite _shotgun;
 
-        // Vanilla's own empty holster ghost, so pistols match the rest of the doll.
         internal static Sprite Pistol => ResourcesCache.Pop<Sprite>("Slots/Equipment/Holster");
 
-        // The game ships no SMG or shotgun ghost. assets/make_ghost.py builds these in the vanilla style.
+        // No vanilla SMG or shotgun ghost, assets/make_ghost.py builds these.
         internal static Sprite Smg => _smg != null ? _smg : _smg = Load("BackpackGunSlot.smg.png");
         internal static Sprite Shotgun => _shotgun != null ? _shotgun : _shotgun = Load("BackpackGunSlot.shotgun.png");
 
