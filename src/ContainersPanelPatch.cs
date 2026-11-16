@@ -75,6 +75,13 @@ namespace BackpackGunSlot
         private bool _inRaid;
         private bool _running;
         private string _caption;
+        private SlotView _backpackView;
+        private CanvasGroup _fade;
+        private int _hiddenPlacements;
+        // Last grid edge seen while the grids were visible. Unsearched or dragged packs
+        // hide their grids, and the slot should not jump to the left column meanwhile.
+        private float _knownGridsRight = float.MinValue;
+        private const int MaxHiddenPlacements = 10;
 
         internal void Initialize(ContainersPanel panel, ItemContext context,
             InventoryEquipment equipment, InventoryController controller,
@@ -96,6 +103,25 @@ namespace BackpackGunSlot
         private void LateUpdate()
         {
             if (_running) RefreshSafely();
+        }
+
+        // Placing in LateUpdate reads the grids before this frame's layout pass,
+        // so the slot trails a frame behind and visibly hops on the first open.
+        private void OnEnable()
+        {
+            Canvas.willRenderCanvases -= PlaceAfterLayout;
+            Canvas.willRenderCanvases += PlaceAfterLayout;
+        }
+
+        private void PlaceAfterLayout()
+        {
+            if (!_running || _view == null || _viewHost == null || _backpackView == null) return;
+            try { PlaceSlot(_backpackView); }
+            catch (Exception e)
+            {
+                Shutdown();
+                Plugin.Log.LogError("Backpack slot placement failed; reopen inventory after correcting the problem: " + e);
+            }
         }
 
         private void RefreshSafely()
@@ -159,6 +185,11 @@ namespace BackpackGunSlot
                 _viewHost.anchorMin = _viewHost.anchorMax = _viewHost.pivot = new Vector2(0, 1);
                 _viewHost.sizeDelta = size;
                 _viewHost.GetComponent<UnityEngine.UI.LayoutElement>().ignoreLayout = true;
+                // Invisible until placement settles.
+                _fade = _viewHost.gameObject.AddComponent<CanvasGroup>();
+                _fade.alpha = 0;
+                _fade.blocksRaycasts = false;
+                _hiddenPlacements = 0;
                 // Grows the backpack row when the grids are shorter than the slot.
                 _rowLayout = backpackView.gameObject.AddComponent<UnityEngine.UI.LayoutElement>();
                 _rowLayout.layoutPriority = 2;
@@ -219,9 +250,9 @@ namespace BackpackGunSlot
                 _boundSlot = slot;
                 _caption = null;
                 if (Plugin.DebugLogging.Value)
-                    Plugin.Log.LogInfo("Bound backpack weapon slot on " + pack.TemplateId);
+                    Plugin.Log.LogDebug("Bound backpack weapon slot on " + pack.TemplateId);
             }
-            PlaceSlot(backpackView);
+            _backpackView = backpackView;
             if (_caption != Plugin.Caption.Value)
             {
                 _caption = Plugin.Caption.Value;
@@ -250,7 +281,8 @@ namespace BackpackGunSlot
             var position = new Vector2(iconBottomLeft.x, iconBottomLeft.y - SlotGap);
 
             float gridsRight = float.MinValue;
-            if (_grids == null || Time.frameCount >= _nextGridSearch)
+            // Also rescan as soon as a cached grid dies, or a rebuilt grid view goes unseen for 30 frames.
+            if (_grids == null || Time.frameCount >= _nextGridSearch || _grids.Any(g => g == null))
             {
                 _grids = backpackView.GetComponentsInChildren<GridView>(true)
                     .Where(g => !g.transform.IsChildOf(_viewHost)).ToArray();
@@ -258,10 +290,17 @@ namespace BackpackGunSlot
             }
             foreach (var grid in _grids)
             {
-                if (grid == null || !grid.gameObject.activeInHierarchy) continue;
-                ((RectTransform)grid.transform).GetWorldCorners(corners);
+                if (!grid.gameObject.activeInHierarchy) continue;
+                var gridRect = (RectTransform)grid.transform;
+                if (gridRect.rect.width <= 0) continue;
+                gridRect.GetWorldCorners(corners);
                 gridsRight = Mathf.Max(gridsRight, parent.InverseTransformPoint(corners[2]).x);
             }
+            if (gridsRight > float.MinValue) _knownGridsRight = gridsRight;
+            else if (_knownGridsRight > float.MinValue) gridsRight = _knownGridsRight;
+            // An unsearched pack has grid views that were never laid out, so there is nothing
+            // to line up with yet. Stay hidden until the search reveals them.
+            else if (_grids.Length > 0 && _fade != null && _fade.alpha < 1) return;
             if (gridsRight > float.MinValue && _clip != null)
             {
                 _clip.GetWorldCorners(corners);
@@ -278,8 +317,18 @@ namespace BackpackGunSlot
             }
 
             position.y -= headerRise;
-            if (((Vector2)_viewHost.localPosition - position).sqrMagnitude > .25f)
-                _viewHost.localPosition = position;
+            bool moved = ((Vector2)_viewHost.localPosition - position).sqrMagnitude > .25f;
+            if (moved) _viewHost.localPosition = position;
+            if (_fade != null && _fade.alpha < 1)
+            {
+                // Show once a placement lands where the previous one did.
+                if ((!moved && _hiddenPlacements > 0) || _hiddenPlacements >= MaxHiddenPlacements)
+                {
+                    _fade.alpha = 1;
+                    _fade.blocksRaycasts = true;
+                }
+                _hiddenPlacements++;
+            }
 
             // Our element outranks the row's own layout, so carry its height over
             // or tall grids get squashed into the next row.
@@ -334,6 +383,9 @@ namespace BackpackGunSlot
             var rowLayout = _rowLayout;
             _viewHost = null;
             _rowLayout = null;
+            _fade = null;
+            _backpackView = null;
+            _knownGridsRight = float.MinValue;
             _clip = null;
             _grids = null;
             _rowElements = null;
@@ -403,8 +455,17 @@ namespace BackpackGunSlot
             _insurance = null;
         }
 
-        private void OnDisable() { Shutdown(); }
-        private void OnDestroy() { Shutdown(); }
+        private void OnDisable()
+        {
+            Canvas.willRenderCanvases -= PlaceAfterLayout;
+            Shutdown();
+        }
+
+        private void OnDestroy()
+        {
+            Canvas.willRenderCanvases -= PlaceAfterLayout;
+            Shutdown();
+        }
     }
 
     internal sealed class BackpackSlotMarker : MonoBehaviour

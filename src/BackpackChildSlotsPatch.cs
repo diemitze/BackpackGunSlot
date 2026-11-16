@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Reflection.Emit;
 using System.Linq;
 using EFT.InventoryLogic;
 using EFT.UI;
@@ -69,15 +71,43 @@ namespace BackpackGunSlot
     [HarmonyPatch(typeof(ItemSpecificationPanel), nameof(ItemSpecificationPanel.CreateModSlots))]
     internal static class BackpackInspectionSlotsPatch
     {
+        private static bool IsGunPack(CompoundItem item) => item != null &&
+            item.Slots.Any(BackpackWeaponSlot.Matches) && item.Slots.All(BackpackWeaponSlot.Matches);
+
         [HarmonyPrefix]
         private static bool Prefix(ItemSpecificationPanel __instance, CompoundItem __0)
         {
-            if (__0 == null || !__0.Slots.Any(BackpackWeaponSlot.Matches) ||
-                !__0.AllSlots.All(BackpackWeaponSlot.Matches)) return true;
-            // This is storage, not a weapon attachment. The attachment renderer has
-            // no icon for the custom slot name and otherwise shows a solid white tile.
-            __instance._modsPanel.gameObject.SetActive(false);
-            return false;
+            if (!IsGunPack(__0)) return true;
+            // The empty slot has no icon for the custom slot name and renders as a solid
+            // white tile, so only show the panel when there is a gun to list.
+            bool hasGun = __0.Slots.Any(s => s.ContainedItem != null);
+            __instance._modsPanel.gameObject.SetActive(hasGun);
+            return hasGun;
+        }
+
+        // Vanilla lists AllSlots, which recurses into the mounted gun and shows its every part.
+        // For our packs list only the pack's own slot, so the panel shows just the gun.
+        [HarmonyTranspiler]
+        private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            var allSlots = AccessTools.PropertyGetter(typeof(CompoundItem), nameof(CompoundItem.AllSlots));
+            var replacement = AccessTools.Method(typeof(BackpackInspectionSlotsPatch), nameof(ListedSlots));
+            foreach (var instruction in instructions)
+                yield return instruction.Calls(allSlots)
+                    ? new CodeInstruction(OpCodes.Call, replacement).MoveLabelsFrom(instruction)
+                    : instruction;
+        }
+
+        private static IEnumerable<Slot> ListedSlots(CompoundItem item) =>
+            IsGunPack(item) ? item.Slots : item.AllSlots;
+
+        [HarmonyPostfix]
+        private static void Postfix(ItemSpecificationPanel __instance, CompoundItem __0)
+        {
+            if (!IsGunPack(__0) || __instance._modsContainer == null) return;
+            foreach (var view in __instance._modsContainer.GetComponentsInChildren<ModSlotView>(true))
+                if (BackpackWeaponSlot.Matches(view.Slot) && view._slotName != null)
+                    view._slotName.text = Plugin.Caption.Value;
         }
     }
 }

@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "slotName": "mod_backpack_weapon",
+  "allowAnyGun": false,
+  "tiers": [
+    { "maxCells": 12, "categories": ["Pistol"] },
+    { "maxCells": 18, "categories": ["Pistol", "SMG"] },
+    { "maxCells": 24, "categories": ["Pistol", "SMG", "Shotgun"] },
+    { "maxCells": 35, "categories": ["Pistol", "SMG", "Shotgun", "AssaultRifle", "AssaultCarbine", "MarksmanRifle"] },
+    { "maxCells": 9999, "categories": ["Pistol", "SMG", "Shotgun", "AssaultRifle", "AssaultCarbine", "MarksmanRifle", "SniperRifle", "MachineGun", "GrenadeLauncher"] }
+  ],
+  "overrides": {}
+}

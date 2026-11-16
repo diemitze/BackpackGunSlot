@@ -22,6 +22,8 @@ namespace BackpackGunSlot
             ("5447bed64bdc2d97278b4568", "machine guns"),
             ("5447bedf4bdc2d87278b4568", "grenade launchers"),
             ("5447bee84bdc2dc3278b4569", "special weapons"),
+            ("617f1ef5e8b54b0998387733", "revolvers"),
+            ("67446d4f04141c10630604e7", "rocket launchers"),
         };
 
         private Slot _slot;

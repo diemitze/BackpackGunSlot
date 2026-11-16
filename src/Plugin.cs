@@ -11,7 +11,7 @@ namespace BackpackGunSlot
     {
         public const string PluginGuid = "com.20fpsguy.backpackgunslot";
         public const string PluginName = "BackpackGunSlot";
-        public const string PluginVersion = "1.0.1";
+        public const string PluginVersion = "1.1.2";
 
         internal static ManualLogSource Log;
 
