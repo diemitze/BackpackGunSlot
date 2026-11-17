@@ -18,6 +18,7 @@ public class Tuner(
     ItemHelper itemHelper,
     JsonUtil jsonUtil,
     ModHelper modHelper,
+    IServiceProvider serviceProvider,
     ISptLogger<Tuner> logger
 ) : IOnLoad
 {
@@ -130,6 +131,56 @@ public class Tuner(
             {
                 mods.TryAdd(tpl, new Dictionary<string, HashSet<MongoId>>());
             }
+        }
+
+        RegisterApbsModPools(backpackTpls);
+    }
+
+    // APBS builds bots from its own per-tier mod pools, so bots.Types alone doesn't silence it.
+    // Its config reload re-reads the pools from disk, which drops these until the next restart.
+    private void RegisterApbsModPools(List<MongoId> backpackTpls)
+    {
+        var loaderType = AppDomain.CurrentDomain.GetAssemblies()
+            .Select(a => a.GetType("ProgressiveBotSystem.Helpers.DataLoader", false))
+            .FirstOrDefault(t => t is not null);
+        if (loaderType is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var loader = serviceProvider.GetService(loaderType);
+            var tiersPatched = 0;
+            foreach (var propName in new[] { "AllTierDataClean", "AllTierDataDirty" })
+            {
+                var allTiers = loaderType.GetProperty(propName)?.GetValue(loader);
+                if (allTiers?.GetType().GetProperty("Tiers")?.GetValue(allTiers) is not System.Collections.IDictionary tiers)
+                {
+                    continue;
+                }
+
+                foreach (var tier in tiers.Values)
+                {
+                    if (tier?.GetType().GetProperty("ModsData")?.GetValue(tier)
+                        is not Dictionary<MongoId, Dictionary<string, HashSet<MongoId>>> mods)
+                    {
+                        continue;
+                    }
+
+                    foreach (var tpl in backpackTpls)
+                    {
+                        mods.TryAdd(tpl, new Dictionary<string, HashSet<MongoId>>());
+                    }
+                    tiersPatched++;
+                }
+            }
+
+            logger.Info($"[BackpackGunSlot] APBS detected, registered backpack mod pools in {tiersPatched} tier table(s)");
+        }
+        catch (Exception ex)
+        {
+            logger.Warning($"[BackpackGunSlot] couldn't register APBS mod pools: {ex.Message}");
         }
     }
 
